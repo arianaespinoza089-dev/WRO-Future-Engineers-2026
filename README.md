@@ -2,6 +2,7 @@
 Este repositorio reúne la documentación y los recursos de ingeniería utilizados para desarrollar un vehículo autónomo que compite en la categoría WRO Future Engineers 2026. 
 
 CONTENIDO
+
 t-photos Contiene 2 fotos del equipo (una oficial y una divertida con todos los miembros).
 
 v-photos Contiene 6 fotos del vehículo (desde todos los lados, desde arriba y desde abajo).
