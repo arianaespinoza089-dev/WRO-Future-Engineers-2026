@@ -23,6 +23,14 @@ Módulo de sensores: se encarga de obtener las distancias detectadas por los sen
 
 Módulo de dirección: esta lo controla el servo , que permite orientar las ruedas mediante el sistema de dirección Ackermann.
 
-Módulo de movimiento: controla el desplazamiento del vehículo y determina cuándo debe avanzar o detenerse.
-Módulo de navegación: analiza las distancias obtenidas por los sensores y decide hacia qué dirección debe girar el vehículo para evitar obstáculos.
-Módulo principal: coordina los diferentes módulos y ejecuta continuamente las instrucciones necesarias para que el vehículo funcione.
+Módulo de movimiento: controla el motor que proporciona el movimiento al vehículo mediante el sistema diferencial. Durante la navegación, el motor mantiene el vehículo en movimiento hacia adelante, mientras que la dirección se controla mediante el servo.
+
+Módulo principal: coordina el funcionamiento general del vehículo, ejecutando continuamente la lectura de los sensores y las acciones de dirección y movimiento.
+
+COMO SE RELACIONA EL CODIGO CON EL VEHICULO
+
+La lógica del programa analiza continuamente las lecturas de los tres sensores. Cuando existe una diferencia entre las distancias laterales, el sistema realiza una corrección mediante el servo para acercar el vehículo hacia una posición más centrada. Al mismo tiempo, la lectura del sensor central permite determinar las condiciones de la trayectoria frontal y realizar las curvas sin dificultad .
+
+
+
+
