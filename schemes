@@ -1,1 +1,95 @@
 este directorio contiene uno o dos diagramas 
+DESCRIPCION GENERAL
+Nuestro vehículo autónomo fue diseñado mediante la integración de un sistema de tracción, un sistema de dirección Ackermann, tres sensores ultrasónicos y un sistema de visión mediante cámara. El motor mantiene el vehículo en movimiento de forma continua mediante un sistema diferencial, mientras que el servomotor controla la dirección.
+Para la prueba con obstáculos incorporamos una cámara como sistema adicional de percepción. La cámara identifica el color de los obstáculos y utiliza esta información para determinar hacia que lado va esquivar.
+
+                         ┌──────────────────────┐
+                         │      CONTROLADOR     │
+                         │                      │
+                         │   PROGRAMA DEL ROBOT │
+                         └──────────┬───────────┘
+                                    │
+          ┌─────────────────────────┼─────────────────────────┐
+          │                         │                         │
+          │                         │                         │
+          ▼                         ▼                         ▼
+ ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+ │ ULTRASÓNICO     │       │ ULTRASÓNICO     │       │ ULTRASÓNICO     │
+ │ IZQUIERDO       │       │    CENTRO       │       │    DERECHO      │
+ │                 │       │                 │       │                 │
+ │ TRIG → PIN 7    │       │ TRIG → PIN 4    │       │ TRIG → PIN 13   │
+ │ ECHO → PIN 6    │       │ ECHO → PIN 5    │       │ ECHO → PIN 12   │
+ └────────┬────────┘       └────────┬────────┘       └────────┬────────┘
+          │                         │                         │
+          ▼                         ▼                         ▼
+ ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+ │ MANTENER EL     │       │ DETECTAR        │       │ MANTENER EL     │
+ │ ROBOT CENTRADO  │       │ DISTANCIA       │       │ ROBOT CENTRADO  │
+ │                 │       │                 │       │                 │
+ │ Comparar con    │       │ Si < 90 cm      │       │ Comparar con    │
+ │ sensor derecho  │       │ → iniciar curva │       │ sensor izquierdo │
+ └────────┬────────┘       └────────┬────────┘       └────────┬────────┘
+          │                         │                         │
+          └─────────────────────────┼─────────────────────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │    DECISIÓN DE       │
+                         │      DIRECCIÓN       │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │        SERVO         │
+                         │      PIN 11          │
+                         │                      │
+                         │ DIRECCIÓN ACKERMANN  │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │       DIRECCIÓN      │
+                         │       DEL ROBOT      │
+                         └──────────────────────┘
+
+
+              ┌─────────────────────────────────────┐
+              │              MOTOR                  │
+              │                                     │
+              │ ENA → PIN 10                        │
+              │ IN1 → PIN 9                         │
+              │ IN2 → PIN 8                         │
+              └──────────────────┬──────────────────┘
+                                 │
+                                 ▼
+                       ┌──────────────────┐
+                       │   DIFERENCIAL    │
+                       └────────┬─────────┘
+                                │
+                                ▼
+                       ┌──────────────────┐
+                       │ AVANCE CONTINUO  │
+                       │ DEL VEHÍCULO     │
+                       └──────────────────┘
+
+
+                         ┌──────────────────────┐
+                         │       CÁMARA         │
+                         │ PRUEBA DE OBSTÁCULOS │
+                         └──────────┬───────────┘
+                                    │
+                         ┌──────────┴──────────┐
+                         ▼                     ▼
+                    ┌─────────┐           ┌─────────┐
+                    │ VERDE   │           │  ROJO   │
+                    └────┬────┘           └────┬────┘
+                         │                     │
+                         ▼                     ▼
+                   GIRAR IZQUIERDA       GIRAR DERECHA
+                         │                     │
+                         └──────────┬──────────┘
+                                    ▼
+                              ┌───────────┐
+                              │   SERVO   │
+                              │ ACKERMANN │
+                              └───────────┘
