@@ -1,2 +1,406 @@
 Este directorio contiene el código  de control que utiliza el vehículo actulamente y con el que participara en la competición y que fue desarrollado por los integrantes .
-tambien todos los artefactos necesarios que utilizamos para resolver la dependencias y autonomia.
+
+
+#include <Servo.h>
+#include <SoftwareSerial.h>
+
+Servo direccion;
+
+// ==================================================
+// SERVO
+// ==================================================
+
+const int pinServo = 4;
+
+const int CENTRO = 90;
+const int GIRO_IZQUIERDA = 135;
+const int GIRO_DERECHA = 65;
+
+// ==================================================
+// COMUNICACION CON ESP32-CAM
+// ==================================================
+
+// ESP32-CAM TX -> Arduino A0
+// ESP32-CAM GND -> Arduino GND
+
+const int RX_ESP = A0;
+const int TX_ESP = A1;
+
+SoftwareSerial espSerial(RX_ESP, TX_ESP);
+
+// ==================================================
+// ULTRASONICO IZQUIERDO
+// ==================================================
+
+const int trigIzq = 11;
+const int echoIzq = 8;
+
+// ==================================================
+// ULTRASONICO DERECHO
+// ==================================================
+
+const int trigDer = 9;
+const int echoDer = 10;
+
+// ==================================================
+// MOTOR
+// ==================================================
+
+const int ENB = 5;
+const int IN3 = 3;
+const int IN4 = 2;
+
+const int VELOCIDAD = 150;
+
+// ==================================================
+// LOGICA ULTRASONICOS
+// ==================================================
+
+const int DIFERENCIA_MINIMA = 10;
+const int DIFERENCIA_MEDIA = 15;
+const int DIFERENCIA_GRANDE = 30;
+
+// ==================================================
+// SERVO
+// ==================================================
+
+int posicionActual = CENTRO;
+int posicionObjetivo = CENTRO;
+
+const int PASO_SERVO = 8;
+const int TIEMPO_SERVO = 20;
+
+// ==================================================
+// ESTADO DE LA CAMARA
+// ==================================================
+
+// R = rojo
+// V = verde
+// N = ninguno
+// A = ambos
+
+char colorCamara = 'N';
+
+// ==================================================
+// MOTOR
+// ==================================================
+
+void avanzar() {
+
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+
+  analogWrite(ENB, VELOCIDAD);
+}
+
+// ==================================================
+
+void detenerMotor() {
+
+  analogWrite(ENB, 0);
+
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+}
+
+// ==================================================
+// SERVO
+// ==================================================
+
+void moverServo() {
+
+  if (posicionActual < posicionObjetivo) {
+
+    posicionActual += PASO_SERVO;
+
+    if (posicionActual > posicionObjetivo) {
+      posicionActual = posicionObjetivo;
+    }
+  }
+
+  else if (posicionActual > posicionObjetivo) {
+
+    posicionActual -= PASO_SERVO;
+
+    if (posicionActual < posicionObjetivo) {
+      posicionActual = posicionObjetivo;
+    }
+  }
+
+  posicionActual = constrain(
+    posicionActual,
+    GIRO_DERECHA,
+    GIRO_IZQUIERDA
+  );
+
+  direccion.write(posicionActual);
+}
+
+// ==================================================
+
+void fijarServo(int objetivo) {
+
+  posicionObjetivo = constrain(
+    objetivo,
+    GIRO_DERECHA,
+    GIRO_IZQUIERDA
+  );
+}
+
+// ==================================================
+// ULTRASONICO
+// ==================================================
+
+long medirDistancia(int trig, int echo) {
+
+  digitalWrite(trig, LOW);
+  delayMicroseconds(3);
+
+  digitalWrite(trig, HIGH);
+  delayMicroseconds(8);
+
+  digitalWrite(trig, LOW);
+
+  unsigned long tiempo =
+    pulseIn(echo, HIGH, 18000);
+
+  if (tiempo == 0) {
+    return 80;
+  }
+
+  long distancia =
+    tiempo * 0.0343 / 2;
+
+  if (distancia < 4 || distancia > 150) {
+    return 80;
+  }
+
+  return distancia;
+}
+
+// ==================================================
+// LOGICA SIN KP
+// ==================================================
+
+int calcularDireccion(long izq, long der) {
+
+  long diferencia = izq - der;
+
+  // -----------------------------------------------
+  // DISTANCIAS PARECIDAS
+  // -----------------------------------------------
+
+  if (abs(diferencia) <= DIFERENCIA_MINIMA) {
+
+    return CENTRO;
+  }
+
+  // -----------------------------------------------
+  // IZQUIERDA TIENE MAS ESPACIO
+  // -----------------------------------------------
+
+  if (diferencia > DIFERENCIA_MINIMA) {
+
+    if (diferencia < DIFERENCIA_MEDIA) {
+
+      return 100;
+    }
+
+    else if (diferencia < DIFERENCIA_GRANDE) {
+
+      return 115;
+    }
+
+    else {
+
+      return GIRO_IZQUIERDA;
+    }
+  }
+
+  // -----------------------------------------------
+  // DERECHA TIENE MAS ESPACIO
+  // -----------------------------------------------
+
+  else {
+
+    if (abs(diferencia) < DIFERENCIA_MEDIA) {
+
+      return 80;
+    }
+
+    else if (abs(diferencia) < DIFERENCIA_GRANDE) {
+
+      return 70;
+    }
+
+    else {
+
+      return GIRO_DERECHA;
+    }
+  }
+}
+
+// ==================================================
+// RECIBIR ESP32-CAM
+// ==================================================
+
+void recibirCamara() {
+
+  while (espSerial.available()) {
+
+    char dato = espSerial.read();
+
+    if (dato == 'R') {
+
+      colorCamara = 'R';
+
+      Serial.println("CAMARA: ROJO");
+    }
+
+    else if (dato == 'V') {
+
+      colorCamara = 'V';
+
+      Serial.println("CAMARA: VERDE");
+    }
+
+    else if (dato == 'A') {
+
+      colorCamara = 'A';
+
+      Serial.println("CAMARA: AMBOS");
+    }
+
+    else if (dato == 'N') {
+
+      colorCamara = 'N';
+    }
+  }
+}
+
+// ==================================================
+// SETUP
+// ==================================================
+
+void setup() {
+
+  Serial.begin(9600);
+
+  espSerial.begin(9600);
+
+  // Servo
+  direccion.attach(pinServo);
+  direccion.write(CENTRO);
+
+  // Ultrasonico izquierdo
+  pinMode(trigIzq, OUTPUT);
+  pinMode(echoIzq, INPUT);
+
+  // Ultrasonico derecho
+  pinMode(trigDer, OUTPUT);
+  pinMode(echoDer, INPUT);
+
+  // Motor
+  pinMode(ENB, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+  detenerMotor();
+
+  Serial.println("==============================");
+  Serial.println(" WRO 2026");
+  Serial.println(" ARDUINO + ESP32-CAM");
+  Serial.println("==============================");
+
+  delay(1500);
+
+  avanzar();
+}
+
+// ==================================================
+// LOOP
+// ==================================================
+
+void loop() {
+
+  // Recibir color de la ESP32-CAM
+  recibirCamara();
+
+  // =================================================
+  // ROJO -> DERECHA
+  // =================================================
+
+  if (colorCamara == 'R') {
+
+    fijarServo(GIRO_DERECHA);
+
+    Serial.println("ROJO -> DERECHA");
+  }
+
+  // =================================================
+  // VERDE -> IZQUIERDA
+  // =================================================
+
+  else if (colorCamara == 'V') {
+
+    fijarServo(GIRO_IZQUIERDA);
+
+    Serial.println("VERDE -> IZQUIERDA");
+  }
+
+  // =================================================
+  // AMBOS -> CENTRO
+  // =================================================
+
+  else if (colorCamara == 'A') {
+
+    fijarServo(CENTRO);
+
+    Serial.println("AMBOS -> CENTRO");
+  }
+
+  // =================================================
+  // SIN COLOR -> ULTRASONICOS
+  // =================================================
+
+  else {
+
+    long izq = medirDistancia(
+      trigIzq,
+      echoIzq
+    );
+
+    long der = medirDistancia(
+      trigDer,
+      echoDer
+    );
+
+    int objetivo = calcularDireccion(
+      izq,
+      der
+    );
+
+    fijarServo(objetivo);
+
+    Serial.print("IZQ: ");
+    Serial.print(izq);
+
+    Serial.print(" cm | DER: ");
+    Serial.print(der);
+
+    Serial.print(" cm | SERVO: ");
+    Serial.println(objetivo);
+  }
+
+  // Actualizar servo
+  moverServo();
+
+  // Motor siempre avanzando
+  avanzar();
+
+  delay(TIEMPO_SERVO);
+}
+
+
+
+
